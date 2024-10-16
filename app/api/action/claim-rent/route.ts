@@ -12,6 +12,7 @@ import {
     Transaction,
 } from "@solana/web3.js";
 
+
 // Interface for token holdings
 interface TokenHolding {
     mint: string;
@@ -43,9 +44,8 @@ const AIRDROP_CRITERIA: AirdropCriteria[] = [
     }
 ];
 
-// Constants for required headers
 const ACTION_VERSION = "1";
-const BLOCKCHAIN_IDS = ["solana:mainnet"];
+const BLOCKCHAIN_IDS = ["solana"]; 
 
 // Function to fetch token holdings using Helius API
 async function getTokenHoldings(address: string): Promise<TokenHolding[]> {
