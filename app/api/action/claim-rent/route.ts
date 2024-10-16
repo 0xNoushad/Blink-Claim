@@ -43,6 +43,10 @@ const AIRDROP_CRITERIA: AirdropCriteria[] = [
     }
 ];
 
+// Constants for required headers
+const ACTION_VERSION = "1";
+const BLOCKCHAIN_IDS = ["solana:mainnet"];
+
 // Function to fetch token holdings using Helius API
 async function getTokenHoldings(address: string): Promise<TokenHolding[]> {
     const HELIUS_API_KEY = process.env.HELIUS_API_KEY!;
@@ -147,9 +151,14 @@ export async function GET(request: Request) {
     const action = url.searchParams.get("action");
 
     if (!action || action !== "check") {
-        return Response.json({ error: "Invalid action" }, {
+        return new Response(JSON.stringify({ error: "Invalid action" }), {
             status: 400,
-            headers: ACTIONS_CORS_HEADERS,
+            headers: {
+                ...ACTIONS_CORS_HEADERS,
+                "Content-Type": "application/json",
+                "X-Action-Version": ACTION_VERSION,
+                "X-Blockchain-Ids": BLOCKCHAIN_IDS.join(","),
+            },
         });
     }
 
@@ -169,8 +178,13 @@ export async function GET(request: Request) {
         },
     };
 
-    return Response.json(payload, {
-        headers: ACTIONS_CORS_HEADERS,
+    return new Response(JSON.stringify(payload), {
+        headers: {
+            ...ACTIONS_CORS_HEADERS,
+            "Content-Type": "application/json",
+            "X-Action-Version": ACTION_VERSION,
+            "X-Blockchain-Ids": BLOCKCHAIN_IDS.join(","),
+        },
     });
 }
 
@@ -182,15 +196,19 @@ export async function POST(request: Request) {
     const action = url.searchParams.get("action");
 
     if (!action || action !== "check") {
-        return Response.json({ error: "Invalid action" }, {
+        return new Response(JSON.stringify({ error: "Invalid action" }), {
             status: 400,
-            headers: ACTIONS_CORS_HEADERS,
+            headers: {
+                ...ACTIONS_CORS_HEADERS,
+                "Content-Type": "application/json",
+                "X-Action-Version": ACTION_VERSION,
+                "X-Blockchain-Ids": BLOCKCHAIN_IDS.join(","),
+            },
         });
     }
 
-    const body: ActionPostRequest = await request.json();
-    
     try {
+        const body: ActionPostRequest = await request.json();
         const userAddress = body.account;
         if (!PublicKey.isOnCurve(new PublicKey(userAddress).toBuffer())) {
             throw new Error("Invalid Solana address");
@@ -210,13 +228,13 @@ export async function POST(request: Request) {
 
         const eligibleAirdrops = eligibilityResults.filter(result => result.eligible);
 
+        let message: string;
         if (eligibleAirdrops.length === 0) {
-            return Response.json({
-                message: "No eligible airdrops found.\n" +
-                    eligibilityResults.map(r => r.reason).join('\n')
-            }, {
-                headers: ACTIONS_CORS_HEADERS,
-            });
+            message = "No eligible airdrops found.\n" +
+                eligibilityResults.map(r => r.reason).join('\n');
+        } else {
+            message = `Found ${eligibleAirdrops.length} eligible airdrops:\n` +
+                eligibilityResults.map(r => r.reason).join('\n');
         }
 
         // For demonstration, we'll create a mock transaction
@@ -226,32 +244,33 @@ export async function POST(request: Request) {
         const payload: ActionPostResponse = await createPostResponse({
             fields: {
                 transaction,
-                message: `Found ${eligibleAirdrops.length} eligible airdrops:\n` +
-                    eligibilityResults.map(r => r.reason).join('\n'),
-                    type: 'transaction',
+                message,
+                type: 'transaction',
             },
         });
 
-        return Response.json(payload, {
-            headers: ACTIONS_CORS_HEADERS,
+        return new Response(JSON.stringify(payload), {
+            headers: {
+                ...ACTIONS_CORS_HEADERS,
+                "Content-Type": "application/json",
+                "X-Action-Version": ACTION_VERSION,
+                "X-Blockchain-Ids": BLOCKCHAIN_IDS.join(","),
+            },
         });
 
     } catch (error) {
         console.error("Error processing airdrop check:", error);
-        if (error instanceof Error) {
-            return Response.json({
-                error: `Failed to process airdrop check: ${error.message}`
-            }, {
-                status: 500,
-                headers: ACTIONS_CORS_HEADERS,
-            });
-        } else {
-            return Response.json({
-                error: "An unknown error occurred while processing the airdrop check."
-            }, {
-                status: 500,
-                headers: ACTIONS_CORS_HEADERS,
-            });
-        }
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+        return new Response(JSON.stringify({
+            error: `Failed to process airdrop check: ${errorMessage}`
+        }), {
+            status: 500,
+            headers: {
+                ...ACTIONS_CORS_HEADERS,
+                "Content-Type": "application/json",
+                "X-Action-Version": ACTION_VERSION,
+                "X-Blockchain-Ids": BLOCKCHAIN_IDS.join(","),
+            },
+        });
     }
 }
