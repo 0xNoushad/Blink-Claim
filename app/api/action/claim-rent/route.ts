@@ -10,8 +10,9 @@ import {
     Connection,
     PublicKey,
     Transaction,
+    SystemProgram,
+    LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-
 
 // Interface for token holdings
 interface TokenHolding {
@@ -100,6 +101,30 @@ async function checkDefiInteractions(
     }
     
     return interactions;
+}
+
+// Function to create a dummy transaction for demonstration
+async function createDummyTransaction(
+    connection: Connection,
+    userAddress: string
+): Promise<Transaction> {
+    const transaction = new Transaction();
+    
+    // Add a dummy instruction (a tiny SOL transfer back to the user's own wallet)
+    transaction.add(
+        SystemProgram.transfer({
+            fromPubkey: new PublicKey(userAddress),
+            toPubkey: new PublicKey(userAddress),
+            lamports: 0.000001 * LAMPORTS_PER_SOL // Tiny amount for demonstration
+        })
+    );
+
+    // Get the latest blockhash
+    const { blockhash } = await connection.getLatestBlockhash('confirmed');
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = new PublicKey(userAddress);
+
+    return transaction;
 }
 
 // Function to check eligibility across protocols
@@ -237,9 +262,8 @@ export async function POST(request: Request) {
                 eligibilityResults.map(r => r.reason).join('\n');
         }
 
-        // For demonstration, we'll create a mock transaction
-        // In a real implementation, you'd create actual claim transactions
-        const transaction = new Transaction();
+        // Create a transaction with at least one instruction
+        const transaction = await createDummyTransaction(connection, userAddress);
         
         const payload: ActionPostResponse = await createPostResponse({
             fields: {
