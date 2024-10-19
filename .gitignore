@@ -55,3 +55,4 @@ yarn.lock
 out/
 .vercel
 netlify.toml
+nano .gitignore
