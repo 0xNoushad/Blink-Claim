@@ -27,13 +27,15 @@ async function checkEligibility(userKey: PublicKey): Promise<boolean> {
 
         // Example conditions - adjust as needed
         const solBalance = data.nativeBalance / LAMPORTS_PER_SOL;
-        const tokenBalance = data.tokens.find((token: any) => token.mint === 'your_token_mint_here')?.amount || 0;
+        const tokenBalance = data.tokens.find((token: { mint: string, amount: number }) => token.mint === 'your_token_mint_here')?.amount || 0;
 
         const isEligible = solBalance > 0.1 && tokenBalance > 0;
         console.log("Eligibility check result:", isEligible);
         return isEligible;
-    } catch (error) {
-        console.error("Error checking eligibility:", error);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("Error checking eligibility:", error.message);
+        }
         return false;
     }
 }
@@ -100,8 +102,10 @@ export async function POST(request: Request) {
     try {
         account = new PublicKey(body.account);
         console.log("User account parsed successfully:", account.toString());
-    } catch (error) {
-        console.error("Invalid user account provided:", body.account);
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("Invalid user account provided:", body.account, error.message);
+        }
         return Response.json({ error: "Invalid account" }, {
             status: 400,
             headers: ACTIONS_CORS_HEADERS,
@@ -153,11 +157,13 @@ export async function POST(request: Request) {
         return Response.json(payload, {
             headers: ACTIONS_CORS_HEADERS,
         });
-    } catch (error: any) {
-        console.error("Error during POST request processing:", error);
-        return Response.json({ error: `Failed to process airdrop claim: ${error.message}` }, {
-            status: 500,
-            headers: ACTIONS_CORS_HEADERS,
-        });
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            console.error("Error during POST request processing:", error.message);
+            return Response.json({ error: `Failed to process airdrop claim: ${error.message}` }, {
+                status: 500,
+                headers: ACTIONS_CORS_HEADERS,
+            });
+        }
     }
 }
