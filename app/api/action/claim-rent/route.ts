@@ -5,17 +5,20 @@ import {
     ActionPostResponse,
     createPostResponse,
 } from "@solana/actions";
-
 import {
     Connection,
     PublicKey,
     Transaction,
     LAMPORTS_PER_SOL,
     SystemProgram,
+    Keypair,
 } from "@solana/web3.js";
 
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY!;
 const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+
+// Example: Replace with your actual airdrop account keypair
+const yourAirdropAccountKeypair = Keypair.generate(); // Replace with your Keypair loading logic
 
 // Function to check eligibility with Helius
 async function checkEligibility(userKey: PublicKey): Promise<boolean> {
@@ -133,20 +136,23 @@ export async function POST(request: Request) {
         const airdropAmount = 0.1 * LAMPORTS_PER_SOL; // Example: 0.1 SOL airdrop
         const transaction = new Transaction().add(
             SystemProgram.transfer({
-                fromPubkey: account,
-                toPubkey: account, // In a real scenario, this would be your airdrop distribution account
+                fromPubkey: yourAirdropAccountKeypair.publicKey, // Use your airdrop account keypair
+                toPubkey: account,
                 lamports: airdropAmount,
             })
         );
 
         const blockheight = await connection.getLatestBlockhash();
-        transaction.feePayer = account;
+        transaction.feePayer = yourAirdropAccountKeypair.publicKey; // Use the public key of the airdrop account
         transaction.recentBlockhash = blockheight.blockhash;
         transaction.lastValidBlockHeight = blockheight.lastValidBlockHeight;
 
+        // Sign the transaction
+        await transaction.sign(yourAirdropAccountKeypair); // Sign the transaction with your airdrop account keypair
+
         const payload: ActionPostResponse = await createPostResponse({
             fields: {
-                transaction,
+                transaction: transaction,  // Ensure this is the transaction object
                 message: `Airdrop claim transaction created for ${airdropAmount / LAMPORTS_PER_SOL} SOL.`,
                 type: 'transaction',
             },
